@@ -1,0 +1,33 @@
+{
+  "name": "pubbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "build": "tsc",
+    "postinstall": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slugonamission/pubbot.git"
+  },
+  "author": "Jamie Garside",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/slugonamission/pubbot/issues"
+  },
+  "homepage": "https://github.com/slugonamission/pubbot#readme",
+  "dependencies": {
+    "@types/async": "^2.0.40",
+    "@types/express": "^4.0.35",
+    "@types/mongodb": "^2.2.2",
+    "@types/request": "0.0.43",
+    "async": "^2.4.0",
+    "express": "^4.15.3",
+    "mongodb": "^2.2.26",
+    "request": "^2.81.0",
+    "typescript": "^2.3.2"
+  }
+}
