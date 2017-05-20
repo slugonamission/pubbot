@@ -12,10 +12,20 @@ export interface Installation {
   accessToken: string;
 }
 
+export interface IInstallationManager {
+  provideCode(code: string, callback: ProvideCodeCallback): void;
+  getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback): void;
+}
+
 export type ProvideCodeCallback = (err?: any) => void;
 export type GetInstallationCallback = (err?: any, inst?: Installation) => void;
 
-export class InstallationManager {
+interface TokenChannelTuple {
+  token: string;
+  channel: string;
+}
+
+export class InstallationManager implements IInstallationManager {
   protected installations: mongodb.Collection;
 
   constructor(db: mongodb.Db, protected clientId: string, protected clientSecret: string) {
@@ -32,37 +42,54 @@ export class InstallationManager {
       code: code
     };
 
-    this.issueRequest("oauth.access", "", "POST", opts, (err, body) => {
+    this.getInfoForCode(code, (err, info) => {
       if(err) return callback(err);
-      if(!body || !body.access_token) return callback("No access token in response body");
+      if(!info) return callback("No token..."); // Mostly to keep TSC happy :)
 
-      var tok = body.access_token;
-      var channelId = body.incoming_webhook.channel_id;
-
-      // Find the team ID for that token
-      this.issueRequest("team.info", tok, "GET", {}, (err, body) => {
+      this.getTeamIdForToken(info.token, (err, team) => {
         if(err) return callback(err);
-        if(!body) return callback("No body provided to team.info");
-        if(!body.ok) return callback("Error in team.info: " + body.error);
-
-        var teamId = body.team.id;
+        if(!team) return callback("No team...");
 
         var installation: Installation = {
-          accessToken: tok,
-          teamId: teamId,
-          channelId: channelId
+          accessToken: info.token,
+          teamId: team,
+          channelId: info.channel
         };
 
-        // Now save!
         this.installations.insertOne(installation, (err) => {
           if(err) return callback(err);
           callback();
-        })
+        });
       });
     });
   }
 
-  protected getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback) {
+  protected getInfoForCode(code: string, callback: (err: any, info?: TokenChannelTuple) => void) {
+    var opts = {
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      code: code
+    };
+
+    this.issueRequest("oauth.access", "", "POST", opts, (err, body) => {
+      if(err) return callback(err);
+      if(!body || !body.access_token) return callback("No access token in response body");
+
+      callback(null, { token: body.access_token, channel: body.incoming_webhook.channel_id });
+    });
+  }
+
+  protected getTeamIdForToken(token: string, callback: (err: any, teamId?: string) => void) {
+    this.issueRequest("team.info", token, "GET", {}, (err, body) => {
+      if(err) return callback(err);
+      if(!body) return callback("No body provided to team.info");
+      if(!body.ok) return callback("Error in team.info: " + body.error);
+      
+      callback(null, body.team.id);
+    });
+  }
+
+  getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback) {
      // This one is easier :)
     var filter: any = {
       teamId: teamId
