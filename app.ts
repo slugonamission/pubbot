@@ -80,7 +80,7 @@ app.post("/jamiego", (req, res) => {
   });
 });
 
-app.post("/action", bodyParser.urlencoded());
+app.post("/action", bodyParser.json());
 app.post("/action", (req, res) => {
   if(!req.body) { console.error("action: no body sent"); return res.status(400).end("No body sent..."); }
   if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("action: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
