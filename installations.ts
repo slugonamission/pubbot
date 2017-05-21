@@ -118,9 +118,7 @@ export abstract class InstallationManager implements IInstallationManager {
 const REDIS_OAUTH_KEY_PREFIX = "oauth";
 
 export class RedisInstallationManager extends InstallationManager {
-  protected db: redis.RedisClient;
-
-  constructor(db: redis.RedisClient, clientId: string, clientSecret: string) {
+  constructor(protected db: redis.RedisClient, clientId: string, clientSecret: string) {
     super(clientId, clientSecret);
   }
 
