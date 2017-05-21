@@ -112,10 +112,29 @@ app.post("/action", (req, res) => {
   var channel = payload.channel.id;
   if(!team || !channel) { console.error("action: no team/channel"); return res.status(400).end("No team or channel sent"); }
   
-  bot.tickRequest(team, channel, err => {
-    if(err) {console.error("action: " + err); return res.end(err) };
+  bot.tickRequest(team, channel, (err, pubbing) => {
+    // I'm not 100% happy putting responses here, but we'll find a better place for them later.
+    // Ideally, the driver would get a handle to the message, but we can't do that without
+    // using the chat.send methods directly, which requires more permissions.
+    if(err) {
+      console.error("action: " + err);
 
-    res.end();
+      // Update the message. Just say it timed out
+      res.json({
+        text: "The pub request timed out",
+        replace_original: true
+      });
+    };
+
+    if(pubbing) {
+      res.json({
+        text: "PUB TIME!",
+        replace_original: true
+      });
+    }
+    else {
+      res.end();
+    }
   });
 });
 

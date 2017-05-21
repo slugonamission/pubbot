@@ -4,6 +4,7 @@ import * as uuid from "uuid";
 import * as request from "request";
 
 export type SendPubRequestCallback = (err: any) => void;
+export type PubTickCallback = (err: any, pubbing?: boolean) => void;
 
 export abstract class Pubbot {
   protected spamIntervals: { [tc: string]: NodeJS.Timer } = {};
@@ -26,7 +27,7 @@ export abstract class Pubbot {
     });
   }
 
-  tickRequest(teamId: string, channelId: string, callback: SendPubRequestCallback) {
+  tickRequest(teamId: string, channelId: string, callback: PubTickCallback) {
     this.pubStore.tickRequest(teamId, channelId, (err, done) => {
       if(err) return callback(err);
 
@@ -36,7 +37,7 @@ export abstract class Pubbot {
         this.spamIntervals[k] = setInterval(() => this.sendSpam(teamId, channelId), 1000);
       }
 
-      callback(null);
+      callback(null, done);
     });
   }
 
