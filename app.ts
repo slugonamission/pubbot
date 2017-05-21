@@ -1,7 +1,7 @@
 import * as express from "express";
 import * as pubbot from "./pubbot";
 import * as pubbot_store from "./pubbot_store";
-import * as incoming_api from "./incoming_api";
+import * as incoming_api from "./slack_incoming_api";
 import * as installs from "./installations";
 import * as redis from "redis";
 import * as bodyParser from "body-parser";
