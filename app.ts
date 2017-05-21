@@ -77,6 +77,8 @@ app.post("/jamiego", (req, res) => {
 
   bot.sendRequest(team, channel, 1, err => {
     if(err) {console.error("jamiego: " + err); return res.status(500).end(err) };
+
+    res.end();
   });
 });
 
@@ -94,6 +96,8 @@ app.post("/action", (req, res) => {
   
   bot.tickRequest(team, channel, err => {
     if(err) {console.error("action: " + err); return res.status(500).end(err) };
+
+    res.end();
   });
 });
 
