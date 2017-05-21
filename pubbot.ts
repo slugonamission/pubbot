@@ -121,6 +121,8 @@ export class SlackPubbot extends Pubbot {
           this.nukeCache(teamId, channelId);
           return callback(err);
         }
+
+        callback(null);
       });
     });
   }
