@@ -76,11 +76,29 @@ app.post("/jamiego", (req, res) => {
   if(!team || !channel) { console.error("jamiego: no team/channel"); return res.status(400).end("No team or channel sent"); }
 
   bot.sendRequest(team, channel, 1, err => {
-    if(err) {console.error("jamiego: " + err); return res.status(500).end(err) };
+    if(err) { console.error("jamiego: " + err); return res.end(err) };
 
     res.end();
   });
 });
+
+app.post("/jamiestop", bodyParser.urlencoded());
+app.post("/jamiestop", (req, res) => {
+  // Unpick...
+  if(!req.body) { console.error("jamiestop: no body sent"); return res.status(400).end("No body sent..."); }
+  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("jamiestop: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
+
+  var team = req.body.team_id;
+  var channel = req.body.channel_id;
+
+  if(!team || !channel) { console.error("jamiestop: no team/channel"); return res.status(400).end("No team or channel sent"); }
+
+  bot.stopAll(team, channel, err => {
+    if(err) { console.error("jamiestop: " + err); return res.end(err) };
+
+    res.end();
+  });
+})
 
 app.post("/action", bodyParser.urlencoded());
 app.post("/action", (req, res) => {
@@ -95,7 +113,7 @@ app.post("/action", (req, res) => {
   if(!team || !channel) { console.error("action: no team/channel"); return res.status(400).end("No team or channel sent"); }
   
   bot.tickRequest(team, channel, err => {
-    if(err) {console.error("action: " + err); return res.status(500).end(err) };
+    if(err) {console.error("action: " + err); return res.end(err) };
 
     res.end();
   });

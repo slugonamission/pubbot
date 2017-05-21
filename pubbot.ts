@@ -40,6 +40,11 @@ export abstract class Pubbot {
     });
   }
 
+  stopAll(teamId: string, channelId: string, callback: SendPubRequestCallback) {
+    // This will cause an event to be fired to clear our own timers.
+    this.pubStore.stopSpam(teamId, channelId, callback);
+  }
+
   protected timeout(teamId: string, channelId: string) {
     // Aw :(
     // Just incase...
@@ -83,7 +88,7 @@ export class SlackPubbot extends Pubbot {
     else {
       this.installs.getInstallation(teamId, channelId, (err, inst) => {
         if(err) return callback(err);
-        if(!inst) return callback("No installation found");
+        if(!inst) return callback("No installation found for this team/channel. Consider re-installing pubbot.");
 
         this.webhookCache[k] = inst.webhookUrl;
         callback(null, inst.webhookUrl);
@@ -100,7 +105,7 @@ export class SlackPubbot extends Pubbot {
     // Get the token to ask the question
     this.getWebhookUrl(teamId, channelId, (err, hook) => {
       if(err) return callback(err);
-      if(!hook) return callback("No installation found");
+      if(!hook) return callback("No installation found for this team/channel. Consider re-installing pubbot.");
 
       var payload = {
         text: "PUB O CLOCK?!",

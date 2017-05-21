@@ -53,7 +53,7 @@ export class InMemoryPubbotStore extends events.EventEmitter implements IPubbotS
   tickRequest(teamId: string, channelId: string, callback: TickRequestCallback) {
     var k = `${teamId}:${channelId}`;
 
-    if(this.pubTracking[k] === undefined) return callback("Invalid token");
+    if(this.pubTracking[k] === undefined) return callback("Could not find pub request - it may have timed out, or been fired");
     
     // Stop the timeout
     clearTimeout(this.pubTracking[k].timeoutTick);
