@@ -6,7 +6,7 @@ import * as request from "request";
 export type SendPubRequestCallback = (err: any) => void;
 
 export abstract class Pubbot {
-  protected spamIntervals: { [tc: string]: NodeJS.Timer }
+  protected spamIntervals: { [tc: string]: NodeJS.Timer } = {};
 
   constructor(protected pubStore: IPubbotStore, protected installs: IInstallationManager) {
     pubStore.on("timeout", (t: string, c: string) => this.timeout(t, c));
