@@ -10,6 +10,7 @@ export interface Installation {
   teamId: string;
   channelId: string;
   accessToken: string;
+  webhookUrl: string;
 }
 
 export interface IInstallationManager {
@@ -20,9 +21,10 @@ export interface IInstallationManager {
 export type ProvideCodeCallback = (err?: any) => void;
 export type GetInstallationCallback = (err?: any, inst?: Installation) => void;
 
-interface TokenChannelTuple {
+interface TokenInfo {
   token: string;
   channel: string;
+  webhook: string;
 }
 
 export abstract class InstallationManager implements IInstallationManager {
@@ -50,7 +52,8 @@ export abstract class InstallationManager implements IInstallationManager {
         var installation: Installation = {
           accessToken: info.token,
           teamId: team,
-          channelId: info.channel
+          channelId: info.channel,
+          webhookUrl: info.webhook
         };
 
         this.saveInstallation(installation, err => {
@@ -62,24 +65,25 @@ export abstract class InstallationManager implements IInstallationManager {
   }
 
   protected abstract saveInstallation(inst: Installation, callback: (err: any) => void): void;
+  abstract getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback): void;
 
-  protected getInfoForCode(code: string, callback: (err: any, info?: TokenChannelTuple) => void) {
+  protected getInfoForCode(code: string, callback: (err: any, info?: TokenInfo) => void) {
     var opts = {
       client_id: this.clientId,
       client_secret: this.clientSecret,
       code: code
     };
 
-    this.issueRequest("oauth.access", "", "POST", opts, (err, body) => {
+    this.issueRequestInner("oauth.access", "", "POST", opts, (err, body) => {
       if(err) return callback(err);
       if(!body || !body.access_token) return callback("No access token in response body");
 
-      callback(null, { token: body.access_token, channel: body.incoming_webhook.channel_id });
+      callback(null, { token: body.access_token, channel: body.incoming_webhook.channel_id, webhook: body.incoming_webhook.url });
     });
   }
 
   protected getTeamIdForToken(token: string, callback: (err: any, teamId?: string) => void) {
-    this.issueRequest("team.info", token, "GET", {}, (err, body) => {
+    this.issueRequestInner("team.info", token, "GET", {}, (err, body) => {
       if(err) return callback(err);
       if(!body) return callback("No body provided to team.info");
       if(!body.ok) return callback("Error in team.info: " + body.error);
@@ -88,9 +92,7 @@ export abstract class InstallationManager implements IInstallationManager {
     });
   }
 
-  abstract getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback): void;
-
-  protected issueRequest(endpoint: string, token: string, method: string, params: any, callback: (err: any, body: any) => void) {
+  protected issueRequestInner(endpoint: string, token: string, method: string, params: any, callback: (err: any, body: any) => void) {
     if(!params) params = {};
 
     if(token && token !== "") params['token'] = token;
@@ -138,7 +140,7 @@ export class RedisInstallationManager extends InstallationManager {
 
     this.db.get(key, (err, reply) => {
       if(err) return callback(err);
-      
+
       var inst: Installation = JSON.parse(reply);
       callback(null, inst);
     });
