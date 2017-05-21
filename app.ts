@@ -1,6 +1,6 @@
 import * as express from "express";
 import * as installs from "./installations";
-import * as mongodb from "mongodb";
+import * as redis from "redis";
 
 // Sanity check configuration
 var requiredArgs = [
@@ -19,50 +19,51 @@ requiredArgs.forEach(a => {
 // Are we running under CloudFoundry?
 if(process.env['VCAP_SERVICES']) {
   var services = JSON.parse(process.env.VCAP_SERVICES);
-  var MONGO_URI = services.mongodb[0].credentials.url;
+
+  var redis_host = services.redis[0].credentials.host;
+  var redis_port = services.redis[0].credentials.port;
+  var redis_pw = services.redis[0].credentials.password;
+
+  var REDIS_URI = `redis://user:${redis_pw}@${redis_host}:${redis_port}/0`;
+
   var PORT = 8080;
 }
 else {
   var PORT = parseInt(process.env['LISTEN_PORT']) || 8080;
-  var MONGO_URI = process.env['MONGO_URI'] || "mongodb://localhost:27017";
+  var REDIS_URI: string = process.env['REDIS_URI'] || "redis://localhost";
 }
 
 var SLACK_CLIENT_ID     = process.env['SLACK_CLIENT_ID'];
 var SLACK_CLIENT_SECRET = process.env['SLACK_CLIENT_SECRET'];
 var SLACK_VERIFICATION_TOKEN = process.env['SLACK_VERIFICATION_TOKEN'];
 
+var db = redis.createClient({ url: REDIS_URI });
 
+db.on("error", (err: any) => {
+  console.error("Redis error: " + err);
+  process.exit(1);
+});
 
-// Create required bits
-var db = mongodb.MongoClient.connect(MONGO_URI, (err, db) => {
+var instMgr = new installs.RedisInstallationManager(db, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET);
+
+// Set up Express...
+var app = express();
+app.get("/oauth", (req, res) => {
+  // Get the parameters and proxy on...
+  var code = req.query.code;
+  if(!code) return res.status(400).end("No code provided...");
+
+  instMgr.provideCode(code, err => {
+    if(err) return res.status(500).end(err);
+    res.end("Ok!");
+  });
+});
+
+app.listen(PORT, (err: any) => {
   if(err) {
-    console.error("Error connecting to Mongodb " + err);
+    console.error("Error listening: " + err);
     process.exit(1);
   }
 
-  console.log("Connected to MongoDB");
-
-  var instMgr = new installs.InstallationManager(db, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET);
-
-  // Set up Express...
-  var app = express();
-  app.get("/oauth", (req, res) => {
-    // Get the parameters and proxy on...
-    var code = req.query.code;
-    if(!code) return res.status(400).end("No code provided...");
-
-    instMgr.provideCode(code, err => {
-      if(err) return res.status(500).end(err);
-      res.end("Ok!");
-    });
-  });
-
-  app.listen(PORT, (err: any) => {
-    if(err) {
-      console.error("Error listening: " + err);
-      process.exit(1);
-    }
-
-    console.log("Listening on port " + PORT + "!");
-  });
+  console.log("Listening on port " + PORT + "!");
 });

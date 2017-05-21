@@ -1,4 +1,4 @@
-import * as mongodb from "mongodb";
+import * as redis from "redis";
 import * as request from "request";
 
 const SLACK_API = "https://api.slack.com/api";
@@ -25,11 +25,8 @@ interface TokenChannelTuple {
   channel: string;
 }
 
-export class InstallationManager implements IInstallationManager {
-  protected installations: mongodb.Collection;
-
-  constructor(db: mongodb.Db, protected clientId: string, protected clientSecret: string) {
-    this.installations = db.collection("installations");
+export abstract class InstallationManager implements IInstallationManager {
+  constructor(protected clientId: string, protected clientSecret: string) {
   }
 
   // This provides a temporary code, and exchanges it for
@@ -56,13 +53,15 @@ export class InstallationManager implements IInstallationManager {
           channelId: info.channel
         };
 
-        this.installations.insertOne(installation, (err) => {
+        this.saveInstallation(installation, err => {
           if(err) return callback(err);
           callback();
         });
       });
     });
   }
+
+  protected abstract saveInstallation(inst: Installation, callback: (err: any) => void): void;
 
   protected getInfoForCode(code: string, callback: (err: any, info?: TokenChannelTuple) => void) {
     var opts = {
@@ -89,20 +88,7 @@ export class InstallationManager implements IInstallationManager {
     });
   }
 
-  getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback) {
-     // This one is easier :)
-    var filter: any = {
-      teamId: teamId
-    };
-
-    if(channelId) filter['channelId'] = channelId;
-
-    this.installations.findOne({teamId: teamId}, (err, rec) => {
-      if(err) return callback(err);
-
-      return callback(null, rec);
-    });
-  }
+  abstract getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback): void;
 
   protected issueRequest(endpoint: string, token: string, method: string, params: any, callback: (err: any, body: any) => void) {
     if(!params) params = {};
@@ -123,6 +109,38 @@ export class InstallationManager implements IInstallationManager {
     request(`${SLACK_API}/${endpoint}`, opts, (err, response, body) => {
       if(body) body = JSON.parse(body);
       callback(err, body);
+    });
+  }
+}
+
+const REDIS_OAUTH_KEY_PREFIX = "oauth";
+
+export class RedisInstallationManager extends InstallationManager {
+  protected db: redis.RedisClient;
+
+  constructor(db: redis.RedisClient, clientId: string, clientSecret: string) {
+    super(clientId, clientSecret);
+  }
+
+  protected saveInstallation(inst: Installation, cb: (err?:any) => void) {
+    var key = `${REDIS_OAUTH_KEY_PREFIX}:${inst.teamId}:${inst.channelId}`;
+
+    var payload = JSON.stringify(inst);
+
+    this.db.set(key, payload, (err, reply) => {
+      if(err) return cb(err);
+      cb();
+    });
+  }
+
+  getInstallation(teamId: string, channelId: string, callback: GetInstallationCallback) {
+    var key = `${REDIS_OAUTH_KEY_PREFIX}:${teamId}:${channelId}`;
+
+    this.db.get(key, (err, reply) => {
+      if(err) return callback(err);
+      
+      var inst: Installation = JSON.parse(reply);
+      callback(null, inst);
     });
   }
 }
