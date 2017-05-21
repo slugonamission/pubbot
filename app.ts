@@ -1,6 +1,7 @@
 import * as express from "express";
 import * as pubbot from "./pubbot";
 import * as pubbot_store from "./pubbot_store";
+import * as incoming_api from "./incoming_api";
 import * as installs from "./installations";
 import * as redis from "redis";
 import * as bodyParser from "body-parser";
@@ -47,96 +48,14 @@ db.on("error", (err: any) => {
   process.exit(1);
 });
 
+// Woop. Poor man's DI :)
 var instMgr = new installs.RedisInstallationManager(db, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET);
 var botStore = new pubbot_store.InMemoryPubbotStore();
 var bot = new pubbot.SlackPubbot(botStore, instMgr);
+var api = incoming_api.createApi(bot, instMgr, SLACK_VERIFICATION_TOKEN);
 
-// Set up Express...
 var app = express();
-app.get("/oauth", (req, res) => {
-  // Get the parameters and proxy on...
-  var code = req.query.code;
-  if(!code) return res.status(400).end("No code provided...");
-
-  instMgr.provideCode(code, err => {
-    if(err) return res.status(500).end(err);
-    res.end("Ok!");
-  });
-});
-
-app.post("/jamiego", bodyParser.urlencoded());
-app.post("/jamiego", (req, res) => {
-  // Unpick...
-  if(!req.body) { console.error("jamiego: no body sent"); return res.status(400).end("No body sent..."); }
-  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("jamiego: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
-
-  var team = req.body.team_id;
-  var channel = req.body.channel_id;
-
-  if(!team || !channel) { console.error("jamiego: no team/channel"); return res.status(400).end("No team or channel sent"); }
-
-  bot.sendRequest(team, channel, 1, err => {
-    if(err) { console.error("jamiego: " + err); return res.end(err) };
-
-    res.end();
-  });
-});
-
-app.post("/jamiestop", bodyParser.urlencoded());
-app.post("/jamiestop", (req, res) => {
-  // Unpick...
-  if(!req.body) { console.error("jamiestop: no body sent"); return res.status(400).end("No body sent..."); }
-  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("jamiestop: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
-
-  var team = req.body.team_id;
-  var channel = req.body.channel_id;
-
-  if(!team || !channel) { console.error("jamiestop: no team/channel"); return res.status(400).end("No team or channel sent"); }
-
-  bot.stopAll(team, channel, err => {
-    if(err) { console.error("jamiestop: " + err); return res.end(err) };
-
-    res.end();
-  });
-})
-
-app.post("/action", bodyParser.urlencoded());
-app.post("/action", (req, res) => {
-  if(!req.body) { console.error("action: no body sent"); return res.status(400).end("No body sent..."); }
-
-  var payload = JSON.parse(req.body.payload);
-
-  if(!payload.token || payload.token != SLACK_VERIFICATION_TOKEN) { console.error("action: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
-
-  var team = payload.team.id;
-  var channel = payload.channel.id;
-  if(!team || !channel) { console.error("action: no team/channel"); return res.status(400).end("No team or channel sent"); }
-  
-  bot.tickRequest(team, channel, (err, pubbing) => {
-    // I'm not 100% happy putting responses here, but we'll find a better place for them later.
-    // Ideally, the driver would get a handle to the message, but we can't do that without
-    // using the chat.send methods directly, which requires more permissions.
-    if(err) {
-      console.error("action: " + err);
-
-      // Update the message. Just say it timed out
-      res.json({
-        text: "The pub request timed out",
-        replace_original: true
-      });
-    };
-
-    if(pubbing) {
-      res.json({
-        text: "PUB TIME!",
-        replace_original: true
-      });
-    }
-    else {
-      res.end();
-    }
-  });
-});
+app.use("/", api);
 
 app.listen(PORT, (err: any) => {
   if(err) {
