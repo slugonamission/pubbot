@@ -64,33 +64,33 @@ app.get("/oauth", (req, res) => {
   });
 });
 
-app.post("/jamiego", bodyParser.json());
+app.post("/jamiego", bodyParser.urlencoded());
 app.post("/jamiego", (req, res) => {
   // Unpick...
-  if(!req.body) return res.status(400).end("No body sent...");
-  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) return res.status(400).end("Verification token does not match");
+  if(!req.body) { console.error("jamiego: no body sent"); return res.status(400).end("No body sent..."); }
+  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("jamiego: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
 
   var team = req.body.team_id;
   var channel = req.body.channel_id;
 
-  if(!team || !channel) return res.status(400).end("Team or channel missing from request");
+  if(!team || !channel) { console.error("jamiego: no team/channel"); return res.status(400).end("No team or channel sent"); }
 
   bot.sendRequest(team, channel, 1, err => {
-    if(err) return res.status(500).end(err);
+    if(err) {console.error("jamiego: " + err); return res.status(500).end(err) };
   });
 });
 
-app.post("/action", bodyParser.json());
+app.post("/action", bodyParser.urlencoded());
 app.post("/action", (req, res) => {
-  if(!req.body) return res.status(400).end("No body sent");
-  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) return res.status(400).end("Verification token does not match");
+  if(!req.body) { console.error("action: no body sent"); return res.status(400).end("No body sent..."); }
+  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("action: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
 
   var team = req.body.team.id;
   var channel = req.body.channel.id;
-  if(!team || !channel) return res.status(400).end("Team or channel missing from request");
+  if(!team || !channel) { console.error("action: no team/channel"); return res.status(400).end("No team or channel sent"); }
   
   bot.tickRequest(team, channel, err => {
-    if(err) return res.status(500).end(err);
+    if(err) {console.error("action: " + err); return res.status(500).end(err) };
   });
 });
 
