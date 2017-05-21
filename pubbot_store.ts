@@ -60,7 +60,7 @@ export class InMemoryPubbotStore extends events.EventEmitter implements IPubbotS
 
     var remainingTicks = --this.pubTracking[k].requiredAcks;
 
-    if(remainingTicks) {
+    if(remainingTicks === 0) {
       this.pubTracking[k].stfuTimeout = setTimeout(() => this.stfu(k), DEFAULT_STFU_TIMEOUT);
       callback(null, true);
     }
