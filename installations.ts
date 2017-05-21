@@ -6,6 +6,8 @@ const SLACK_API = "https://api.slack.com/api";
 const EXCHANGE_URI = `${SLACK_API}/oauth.access`;
 const TEAM_INFO_URI = `${SLACK_API}/team.info`;
 
+// We should refactor this to pull webhookUrl out of the structure.
+// Possibly just provide an "any" field for the other parameters?
 export interface Installation {
   teamId: string;
   channelId: string;
