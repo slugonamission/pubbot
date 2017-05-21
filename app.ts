@@ -53,7 +53,6 @@ var bot = new pubbot.SlackPubbot(botStore, instMgr);
 
 // Set up Express...
 var app = express();
-app.get("/oauth", bodyParser.json());
 app.get("/oauth", (req, res) => {
   // Get the parameters and proxy on...
   var code = req.query.code;
