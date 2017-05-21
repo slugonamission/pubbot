@@ -80,13 +80,16 @@ app.post("/jamiego", (req, res) => {
   });
 });
 
-app.post("/action", bodyParser.json());
+app.post("/action", bodyParser.urlencoded());
 app.post("/action", (req, res) => {
   if(!req.body) { console.error("action: no body sent"); return res.status(400).end("No body sent..."); }
-  if(!req.body.token || req.body.token != SLACK_VERIFICATION_TOKEN) { console.error("action: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
 
-  var team = req.body.team.id;
-  var channel = req.body.channel.id;
+  var payload = JSON.parse(req.body.payload);
+
+  if(!payload.token || payload.token != SLACK_VERIFICATION_TOKEN) { console.error("action: verification token doesn't match"); return res.status(400).end("Verification token does not match"); }
+
+  var team = payload.team.id;
+  var channel = payload.channel.id;
   if(!team || !channel) { console.error("action: no team/channel"); return res.status(400).end("No team or channel sent"); }
   
   bot.tickRequest(team, channel, err => {
